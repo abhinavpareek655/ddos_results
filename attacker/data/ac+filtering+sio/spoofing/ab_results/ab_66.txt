@@ -1,0 +1,50 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient)...bind: Cannot assign requested address (99)
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        21 bytes
+
+Concurrency Level:      10
+Time taken for tests:   2.349 seconds
+Complete requests:      20
+Failed requests:        1
+   (Connect: 0, Receive: 0, Length: 1, Exceptions: 0)
+Non-2xx responses:      19
+Keep-Alive requests:    19
+Total transferred:      3762 bytes
+HTML transferred:       399 bytes
+Requests per second:    8.51 [#/sec] (mean)
+Time per request:       1174.749 [ms] (mean)
+Time per request:       117.475 [ms] (mean, across all concurrent requests)
+Transfer rate:          1.56 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    3   6.5      3      29
+Processing:   248  657 131.5    694     950
+Waiting:        0  645 176.1    694     949
+Total:        248  661 135.5    694     979
+
+Percentage of the requests served within a certain time (ms)
+  50%    694
+  66%    702
+  75%    705
+  80%    707
+  90%    718
+  95%    979
+  98%    979
+  99%    979
+ 100%    979 (longest request)

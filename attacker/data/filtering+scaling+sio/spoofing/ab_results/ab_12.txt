@@ -1,0 +1,45 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        89 bytes
+
+Concurrency Level:      10
+Time taken for tests:   140.592 seconds
+Complete requests:      20
+Failed requests:        11
+   (Connect: 0, Receive: 0, Length: 11, Exceptions: 0)
+Non-2xx responses:      5
+Keep-Alive requests:    14
+Total transferred:      4242 bytes
+HTML transferred:       1741 bytes
+Requests per second:    0.14 [#/sec] (mean)
+Time per request:       70296.171 [ms] (mean)
+Time per request:       7029.617 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.03 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    3   4.6      4      20
+Processing:    92 51380 53061.8  62320  126935
+Waiting:       91 51373 53078.7  62320  126935
+Total:         92 51383 53062.5  62324  126939
+
+Percentage of the requests served within a certain time (ms)
+  50%  62324
+  66%  63305
+  75%  126938
+  80%  126938
+  90%  126939
+  95%  126939
+  98%  126939
+  99%  126939
+ 100%  126939 (longest request)

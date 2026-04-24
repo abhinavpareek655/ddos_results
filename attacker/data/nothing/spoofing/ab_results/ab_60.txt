@@ -1,0 +1,52 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient)...Cannot open CSV output file: No such file or directory
+..done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        95 bytes
+
+Concurrency Level:      10
+Time taken for tests:   177.247 seconds
+Complete requests:      20
+Failed requests:        8
+   (Connect: 0, Receive: 0, Length: 8, Exceptions: 0)
+Keep-Alive requests:    12
+Total transferred:      2928 bytes
+HTML transferred:       1140 bytes
+Requests per second:    0.11 [#/sec] (mean)
+Time per request:       88623.542 [ms] (mean)
+Time per request:       8862.354 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.02 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    2   1.8      0       5
+Processing:     2 39941 41983.7  24741  120078
+Waiting:        0 23018 15912.3  24741   51810
+Total:          4 39943 41983.0  24745  120078
+WARNING: The median and mean for the initial connection time are not within a normal deviation
+        These results are probably not that reliable.
+
+Percentage of the requests served within a certain time (ms)
+  50%  24745
+  66%  27971
+  75%  51810
+  80%  113358
+  90%  120044
+  95%  120078
+  98%  120078
+  99%  120078
+ 100%  120078 (longest request)
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient)...apr_pollset_poll: The timeout specified has expired (70007)

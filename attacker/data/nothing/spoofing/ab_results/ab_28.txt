@@ -1,0 +1,49 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        95 bytes
+
+Concurrency Level:      10
+Time taken for tests:   43.717 seconds
+Complete requests:      20
+Failed requests:        9
+   (Connect: 0, Receive: 0, Length: 9, Exceptions: 0)
+Keep-Alive requests:    11
+Total transferred:      2684 bytes
+HTML transferred:       1045 bytes
+Requests per second:    0.46 [#/sec] (mean)
+Time per request:       21858.434 [ms] (mean)
+Time per request:       2185.843 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.06 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    3   2.2      4      11
+Processing:     2 13409 12596.8  23623   27352
+Waiting:        0 13397 12609.4  23623   27352
+Total:          2 13412 12598.0  23627   27357
+
+Percentage of the requests served within a certain time (ms)
+  50%  23627
+  66%  24505
+  75%  24980
+  80%  25580
+  90%  26583
+  95%  27357
+  98%  27357
+  99%  27357
+ 100%  27357 (longest request)
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient)...apr_pollset_poll: The timeout specified has expired (70007)

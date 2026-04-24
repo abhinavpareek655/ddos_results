@@ -1,0 +1,50 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient)...apr_pollset_poll: The timeout specified has expired (70007)
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        89 bytes
+
+Concurrency Level:      10
+Time taken for tests:   236.454 seconds
+Complete requests:      20
+Failed requests:        9
+   (Connect: 0, Receive: 0, Length: 9, Exceptions: 0)
+Non-2xx responses:      9
+Keep-Alive requests:    11
+Total transferred:      4202 bytes
+HTML transferred:       1816 bytes
+Requests per second:    0.08 [#/sec] (mean)
+Time per request:       118227.186 [ms] (mean)
+Time per request:       11822.719 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.02 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0  104 457.3      2    2046
+Processing:  1504 108649 27876.7 112653  128048
+Waiting:     1503 108649 27876.8 112653  128047
+Total:       3550 108753 27463.4 112653  128048
+
+Percentage of the requests served within a certain time (ms)
+  50%  112653
+  66%  120252
+  75%  120252
+  80%  120252
+  90%  120252
+  95%  128048
+  98%  128048
+  99%  128048
+ 100%  128048 (longest request)

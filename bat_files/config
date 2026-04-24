@@ -1,0 +1,42 @@
+# Default GitHub account
+Host github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_personal
+  IdentitiesOnly yes
+
+# University GitHub account
+Host github-university
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_university
+  IdentitiesOnly yes
+
+Host benign
+    HostName 192.168.100.2
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519
+
+Host attacker
+    HostName 192.168.100.3
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519
+
+Host loadbalancer
+    HostName 192.168.100.1
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519
+
+Host server1
+    HostName 192.168.100.4
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519
+
+Host server2
+    HostName 192.168.100.5
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519
+
+Host server3
+    HostName 192.168.100.6
+    User abhinav
+    IdentityFile ~/.ssh/id_ed25519

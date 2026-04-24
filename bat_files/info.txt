@@ -1,0 +1,14 @@
+to turn off autoscaling:
+
+systemctl stop haproxy-autoscaler
+systemctl disable haproxy-autoscaler
+
+
+to turn it back on: 
+
+systemctl enable --now haproxy-autoscaler
+
+
+to see the servers usage on haproxy: 
+
+journalctl -fu haproxy-autoscaler

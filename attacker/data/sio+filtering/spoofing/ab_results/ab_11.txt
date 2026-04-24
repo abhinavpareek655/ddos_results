@@ -1,0 +1,90 @@
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        95 bytes
+
+Concurrency Level:      10
+Time taken for tests:   324.424 seconds
+Complete requests:      20
+Failed requests:        19
+   (Connect: 0, Receive: 0, Length: 19, Exceptions: 0)
+Non-2xx responses:      14
+Keep-Alive requests:    7
+Total transferred:      4105 bytes
+HTML transferred:       1860 bytes
+Requests per second:    0.06 [#/sec] (mean)
+Time per request:       162211.755 [ms] (mean)
+Time per request:       16221.176 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.01 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0   16  44.6      5     204
+Processing:  9804 90383 49710.9 120210  127033
+Waiting:     9804 96734 60624.4 120210  247126
+Total:       9813 90399 49715.5 120211  127038
+
+Percentage of the requests served within a certain time (ms)
+  50%  120211
+  66%  127021
+  75%  127037
+  80%  127038
+  90%  127038
+  95%  127038
+  98%  127038
+  99%  127038
+ 100%  127038 (longest request)
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.100.1 (be patient).....done
+
+
+Server Software:        uvicorn
+Server Hostname:        192.168.100.1
+Server Port:            5000
+
+Document Path:          /matmul
+Document Length:        89 bytes
+
+Concurrency Level:      10
+Time taken for tests:   143.302 seconds
+Complete requests:      20
+Failed requests:        14
+   (Connect: 0, Receive: 0, Length: 14, Exceptions: 0)
+Non-2xx responses:      9
+Keep-Alive requests:    11
+Total transferred:      4162 bytes
+HTML transferred:       1796 bytes
+Requests per second:    0.14 [#/sec] (mean)
+Time per request:       71650.813 [ms] (mean)
+Time per request:       7165.081 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.03 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0  105 463.1      3    2073
+Processing:  8703 60247 55758.1  14768  129068
+Waiting:     8703 60247 55758.2  14768  129068
+Total:       8706 60352 55661.7  14768  129072
+
+Percentage of the requests served within a certain time (ms)
+  50%  14768
+  66%  108184
+  75%  129071
+  80%  129071
+  90%  129072
+  95%  129072
+  98%  129072
+  99%  129072
+ 100%  129072 (longest request)
