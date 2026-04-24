@@ -4,11 +4,12 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D        
+from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.patches import Patch
-from matplotlib.lines   import Line2D
-from scipy.interpolate  import interp1d
+from matplotlib.lines import Line2D
+from matplotlib import cm, colors as mcolors
+from scipy.interpolate import interp1d
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,50 +24,35 @@ FILE_PAIRS = [
 OUTPUT_EPS = os.path.join(SCRIPT_DIR, "output_3d.eps")
 OUTPUT_PNG = os.path.join(SCRIPT_DIR, "output_3d.png")
 
-N_INTERP    = 300          # interpolation resolution for avg_load ribbon
-LOAD_HEIGHT = 500         # max Z height of the avg_load band per shelf (= 100 %)
-TTIME_HEIGHT= 420          # max Z height allocated to ttime spikes above the shelf
-SHELF_GAP   = 390          # total Z space per shelf (LOAD_HEIGHT + TTIME_HEIGHT + padding)
-Y_SPACING   = 2.0          # spacing between shelves along Y axis
-FONT_SIZE   = 36
+# ── LAYOUT ───────────────────────────────────────────────────────────────────
+N_X          = 60          # X resolution of the surface mesh
+N_Y_PER_SCN  = 3           # Y slices per scenario (controls Y mesh density)
+Y_SPACING    = 2.0         # Y distance between scenario centres
+FONT_SIZE    = 36
+
+# Z axis: load occupies 0–100 (actual percent), no artificial scaling
+Z_MAX_LOAD   = 100.0       # Z = avg_load_pct directly (0–100)
 
 # Colours
-C_LOAD        = "#E8761A"  # orange  – avg load surface
-C_TTIME       = "#2196F3"  # blue    – ttime spikes
-C_FLOOR       = "#686868"  # light grey – shelf floor grid line
-C_LOAD_GRID   = "#686868"  # light grey – load reference boundaries
-C_TTIME_GRID  = "#686868"  # light grey – ttime reference boundaries
-TTIME_MARKER_SIZE = 48     # size of x markers on top of each ttime stem
-TTIME_MARKER_LW   = 2.5   # x marker stroke width
-N_TTIME_TICKS     = 5     # reference ticks for ttime scale labels/grid
+C_TTIME      = "#2196F3"
+C_WALL       = "#F5F5F5"
+C_GRID       = "#545454"
 
-# ── DIAGONAL GRID SETTINGS ───────────────────────────────────────────────────
-# Load % reference levels shown as diagonal planes across all shelves
-LOAD_GRID_LEVELS   = [0.25, 0.50, 0.75, 1.00]   # fraction of LOAD_HEIGHT
-LOAD_GRID_ALPHA    = 0.0
-LOAD_GRID_LW       = 1.4
-GRID_MARKER_SIZE   = 16
-GRID_MARKER_ALPHA  = 0.95
-
-# ttime reference levels are generated from stretched fractions in log space.
-TTIME_GRID_N_LEVELS = 4
-TTIME_GRID_MIN_FRAC = 0.15
-TTIME_GRID_ALPHA   = 0.0
-TTIME_GRID_LW      = 1.4
-
-# ── FONTS ───────────────────────────────────────────────────────────────────
+TTIME_MARKER_SIZE = 40
+TTIME_MARKER_LW   = 2.0
+N_TTIME_TICKS     = 5
 
 matplotlib.rcParams.update({
-    "font.family":    "serif",
-    "font.serif":     ["Times New Roman", "Times", "DejaVu Serif", "serif"],
-    "font.size":      FONT_SIZE,
-    "axes.labelsize": FONT_SIZE,
-    "xtick.labelsize": FONT_SIZE,
-    "ytick.labelsize": FONT_SIZE,
-    "axes.linewidth": 1.2,
+    "font.family":     "serif",
+    "font.serif":      ["Times New Roman", "Times", "DejaVu Serif", "serif"],
+    "font.size":       FONT_SIZE,
+    "axes.labelsize":  FONT_SIZE,
+    "xtick.labelsize": FONT_SIZE - 4,
+    "ytick.labelsize": FONT_SIZE - 2,
+    "axes.linewidth":  1.2,
 })
 
-# ── HELPERS ─────────────────────────────────────────────────────────────────
+# ── HELPERS ──────────────────────────────────────────────────────────────────
 
 def load_dat(path):
     df = pd.read_csv(path, sep="\t")
@@ -89,7 +75,8 @@ def load_csv(path, t0, t1):
     return df
 
 
-def interp_load(rel, vals, n=N_INTERP):
+def interp_load(rel, vals, n=N_X):
+    """Interpolate load onto a uniform x grid; return values in raw %."""
     s = pd.Series(rel)
     mask = ~s.duplicated(keep="last").values
     rt = np.array(rel)[mask]; v = np.array(vals)[mask]
@@ -99,11 +86,10 @@ def interp_load(rel, vals, n=N_INTERP):
         return xg, np.full(n, float(v.mean()) if len(v) else 0)
     f = interp1d(rt, v, kind="linear", bounds_error=False,
                  fill_value=(v[0], v[-1]))
-    return xg, f(xg)
+    return xg, np.clip(f(xg), 0.0, 100.0)
 
 
 def ttime_tick_values(max_ms, n_ticks=N_TTIME_TICKS):
-    """Return log-spaced ttime tick values in milliseconds."""
     top = max(float(max_ms), 1.0)
     vals = np.geomspace(1.0, top, n_ticks)
     vals = np.unique(np.round(vals).astype(int))
@@ -112,381 +98,194 @@ def ttime_tick_values(max_ms, n_ticks=N_TTIME_TICKS):
     return vals
 
 
-def stretched_ttime_ms_levels(max_ms, n_levels=TTIME_GRID_N_LEVELS,
-                              min_frac=TTIME_GRID_MIN_FRAC):
-    """Generate ttime grid levels with wider spacing in plotted Z space."""
-    top = max(float(max_ms), 1.0)
-    fracs = np.linspace(min_frac, 1.0, n_levels)
-    ms_vals = np.expm1(fracs * np.log1p(top))
-    ms_vals = np.unique(np.round(ms_vals).astype(int))
-    ms_vals = ms_vals[ms_vals > 0]
-    if len(ms_vals) == 0:
-        return np.array([int(round(top))])
-    if ms_vals[-1] != int(round(top)):
-        ms_vals = np.append(ms_vals, int(round(top)))
-    return ms_vals
-
-
-def draw_diagonal_load_grid(ax, n, y_positions, load_levels, shelf_gap, load_height):
+def make_surface_arrays(datasets, y_positions, n_x=N_X, n_y_per=N_Y_PER_SCN):
     """
-    Draw diagonal reference planes for avg-load percentage levels.
-    Each plane sweeps from shelf 0 (y=y_positions[0]) to shelf n-1
-    (y=y_positions[-1]), rising in Z by one SHELF_GAP per step so it
-    stays at the same *relative* height on every shelf – giving the
-    staircase/diagonal look seen in the reference image.
+    Build unified X, Y, Z numpy 2-D arrays for ax.plot_surface.
 
-        For each level we draw boundary segments for every shelf intersection
-        so all iteration lines are visible.
+    X : relative time (0–1), same for every row
+    Y : scenario position – each scenario occupies n_y_per rows that all
+        share the same y_position so the surface is flat across Y within
+        a scenario and the transitions between scenarios show connectivity
+    Z : avg_load_pct (0–100), directly – so Z axis labels map 1-to-1
     """
-    for frac in load_levels:
-        z_rel = frac * load_height     # Z offset *within* each shelf
+    n_scn   = len(datasets)
+    # One extra duplicate row per boundary so the surface visually 'touches'
+    # each neighbouring scenario at a shared Y edge
+    total_y = n_scn * n_y_per
 
-        # Build the diagonal ribbon: one quad per shelf-to-shelf step
-        # so the plane follows the staircase exactly.
-        # Vertices: bottom-left, bottom-right of current shelf →
-        #           top-right, top-left of next shelf.
-        # We collect all quads as a single Poly3DCollection.
-        verts = []
-        for i in range(n):
-            z_i = i * shelf_gap + z_rel
-            y_i = y_positions[i]
+    X_arr = np.zeros((total_y, n_x))
+    Y_arr = np.zeros((total_y, n_x))
+    Z_arr = np.zeros((total_y, n_x))
 
-            if i < n - 1:
-                z_j = (i + 1) * shelf_gap + z_rel
-                y_j = y_positions[i + 1]
+    xg = np.linspace(0, 1, n_x)
 
-                # Quad connecting shelf i to shelf i+1 at this load level
-                quad = [
-                    (0.0, y_i, z_i),
-                    (1.0, y_i, z_i),
-                    (1.0, y_j, z_j),
-                    (0.0, y_j, z_j),
-                ]
-                verts.append(quad)
+    for i, (ds, yc) in enumerate(zip(datasets, y_positions)):
+        load_row = ds["load_pct"]   # shape (n_x,) in percent
 
-        poly = Poly3DCollection(
-            verts,
-            alpha=LOAD_GRID_ALPHA,
-            facecolor=(0, 0, 0, 0),
-            edgecolor=C_LOAD_GRID,
-            linewidth=LOAD_GRID_LW,
-        )
-        ax.add_collection3d(poly)
+        row_start = i * n_y_per
+        for r in range(n_y_per):
+            row = row_start + r
+            X_arr[row, :] = xg
+            Y_arr[row, :] = yc
+            Z_arr[row, :] = load_row
 
-        # Explicit boundaries to ensure all plane edges are visible.
-        for i in range(n):
-            z_i = i * shelf_gap + z_rel
-            y_i = y_positions[i]
-            ax.plot([0.0, 1.0], [y_i, y_i], [z_i, z_i],
-                    color=C_LOAD_GRID, linewidth=LOAD_GRID_LW, alpha=0.95, zorder=6)
-
-            if i < n - 1:
-                z_j = (i + 1) * shelf_gap + z_rel
-                y_j = y_positions[i + 1]
-                ax.plot([0.0, 0.0], [y_i, y_j], [z_i, z_j],
-                        color=C_LOAD_GRID, linewidth=LOAD_GRID_LW, alpha=0.95, zorder=6)
-                ax.plot([1.0, 1.0], [y_i, y_j], [z_i, z_j],
-                        color=C_LOAD_GRID, linewidth=LOAD_GRID_LW, alpha=0.95, zorder=6)
-
-        # Bold top edge along the final (back) shelf for label anchoring
-        z_back = (n - 1) * shelf_gap + z_rel
-        y_back = y_positions[-1]
-        ax.plot([0.0, 1.0], [y_back, y_back], [z_back, z_back],
-                color=C_LOAD_GRID, linewidth=LOAD_GRID_LW, alpha=0.95, zorder=7)
-
-        # Also draw the front edge on shelf 0 for readability
-        z_front = z_rel
-        y_front = y_positions[0]
-        ax.plot([0.0, 1.0], [y_front, y_front], [z_front, z_front],
-                color=C_LOAD_GRID, linewidth=LOAD_GRID_LW, alpha=0.95,
-                linestyle="--", zorder=7)
-
-        # Mark where this reference level meets each scenario shelf.
-        z_pts = np.array([k * shelf_gap + z_rel for k in range(n)])
-        y_pts = np.array(y_positions)
-        ax.scatter(np.full(n, 1.0), y_pts, z_pts,
-               s=GRID_MARKER_SIZE, color=C_LOAD_GRID, alpha=GRID_MARKER_ALPHA,
-               depthshade=False, zorder=8)
-
-        # Label at top-right corner of the back shelf
-        ax.text(1.02, y_back, z_back,
-                f"{int(frac*100)}%",
-            fontsize=FONT_SIZE, ha="left", va="center",
-                color=C_LOAD_GRID, fontweight="bold")
-
-
-def draw_diagonal_ttime_grid(ax, n, y_positions, ttime_ms_levels,
-                             shelf_gap, load_height, ttime_height,
-                             global_ttime_max):
-    """
-    Draw diagonal reference planes for ttime millisecond levels (blue).
-    Same staircase logic as load grid but the Z offset is the ttime
-    log-scaled value sitting on top of LOAD_HEIGHT.
-    """
-    log_max = np.log1p(global_ttime_max)
-
-    for ms in ttime_ms_levels:
-        if ms > global_ttime_max:
-            continue   # skip levels beyond actual data range
-
-        # Z offset within the ttime band (above LOAD_HEIGHT)
-        z_ttime_offset = load_height + (np.log1p(ms) / log_max) * ttime_height
-
-        verts = []
-        for i in range(n):
-            z_i = i * shelf_gap + z_ttime_offset
-            y_i = y_positions[i]
-
-            if i < n - 1:
-                z_j = (i + 1) * shelf_gap + z_ttime_offset
-                y_j = y_positions[i + 1]
-
-                quad = [
-                    (0.0, y_i, z_i),
-                    (1.0, y_i, z_i),
-                    (1.0, y_j, z_j),
-                    (0.0, y_j, z_j),
-                ]
-                verts.append(quad)
-
-        poly = Poly3DCollection(
-            verts,
-            alpha=TTIME_GRID_ALPHA,
-            facecolor=(0, 0, 0, 0),
-            edgecolor=C_TTIME_GRID,
-            linewidth=TTIME_GRID_LW,
-        )
-        ax.add_collection3d(poly)
-
-        # Explicit boundaries to ensure all plane edges are visible.
-        for i in range(n):
-            z_i = i * shelf_gap + z_ttime_offset
-            y_i = y_positions[i]
-            ax.plot([0.0, 1.0], [y_i, y_i], [z_i, z_i],
-                    color=C_TTIME_GRID, linewidth=TTIME_GRID_LW, alpha=0.95, zorder=6)
-
-            if i < n - 1:
-                z_j = (i + 1) * shelf_gap + z_ttime_offset
-                y_j = y_positions[i + 1]
-                ax.plot([0.0, 0.0], [y_i, y_j], [z_i, z_j],
-                        color=C_TTIME_GRID, linewidth=TTIME_GRID_LW, alpha=0.95, zorder=6)
-                ax.plot([1.0, 1.0], [y_i, y_j], [z_i, z_j],
-                        color=C_TTIME_GRID, linewidth=TTIME_GRID_LW, alpha=0.95, zorder=6)
-
-        # Bold edge on back shelf + label
-        z_back = (n - 1) * shelf_gap + z_ttime_offset
-        y_back = y_positions[-1]
-        ax.plot([0.0, 1.0], [y_back, y_back], [z_back, z_back],
-                color=C_TTIME_GRID, linewidth=TTIME_GRID_LW, alpha=0.95, zorder=7)
-
-        # Dashed edge on front shelf
-        z_front = z_ttime_offset
-        y_front = y_positions[0]
-        ax.plot([0.0, 1.0], [y_front, y_front], [z_front, z_front],
-                color=C_TTIME_GRID, linewidth=TTIME_GRID_LW, alpha=0.95,
-                linestyle="--", zorder=7)
-
-        # Mark where this reference level meets each scenario shelf.
-        z_pts = np.array([k * shelf_gap + z_ttime_offset for k in range(n)])
-        y_pts = np.array(y_positions)
-        ax.scatter(np.full(n, 1.0), y_pts, z_pts,
-               s=GRID_MARKER_SIZE, color=C_TTIME_GRID, alpha=GRID_MARKER_ALPHA,
-               depthshade=False, zorder=8)
-
-        # Label
-        label_str = f"{int(ms):,} ms"
-        ax.text(1.02, y_back, z_back,
-                label_str,
-            fontsize=FONT_SIZE, ha="left", va="center", color=C_TTIME_GRID)
+    return X_arr, Y_arr, Z_arr
 
 
 def main():
     n = len(FILE_PAIRS)
-
-    datasets = []
+    datasets        = []
     global_ttime_max = 1.0
 
     for label, dpath, cpath in FILE_PAIRS:
-        dat, t0, t1 = load_dat(dpath)
-        csv = load_csv(cpath, t0, t1)
-        xg, load_interp = interp_load(csv["rel"].values, csv["avg_load_pct"].values)
-        l_min = load_interp.min(); l_max = load_interp.max()
-        # Preserve true percentage meaning: 100% -> LOAD_HEIGHT.
-        load_norm = np.clip(load_interp, 0.0, 100.0) / 100.0 * LOAD_HEIGHT
-        ttime_raw = dat["ttime"].values.astype(float)
-        ttime_rel = dat["rel"].values
+        dat, t0, t1  = load_dat(dpath)
+        csv          = load_csv(cpath, t0, t1)
+        xg, load_pct = interp_load(csv["rel"].values, csv["avg_load_pct"].values)
+        ttime_raw    = dat["ttime"].values.astype(float)
+        ttime_rel    = dat["rel"].values
         global_ttime_max = max(global_ttime_max, ttime_raw.max())
         datasets.append(dict(
-            label=label,
-            xg=xg,
-            load=load_norm,
-            load_range=(l_min, l_max),
-            ttime_rel=ttime_rel,
-            ttime_ms=ttime_raw,
+            label    = label,
+            xg       = xg,
+            load_pct = load_pct,          # raw %, 0–100
+            ttime_rel= ttime_rel,
+            ttime_ms = ttime_raw,
         ))
 
-    # ── 2. Figure setup ──────────────────────────────────────────────────────
-    fig = plt.figure(figsize=(38, 26))
+    # ── Y positions for each scenario ────────────────────────────────────────
+    y_positions = np.arange(n, dtype=float) * Y_SPACING   # 0, 2, 4, 6, 8
+
+    # ── Build the unified surface ─────────────────────────────────────────────
+    X, Y, Z = make_surface_arrays(datasets, y_positions)
+
+    # ── Colour-map: red gradient mapped to load height ────────────────────────
+    # Use a red colormap (Reds) so low load = pale pink, high = deep red
+    cmap_load = cm.get_cmap("Reds")
+    norm_load  = mcolors.Normalize(vmin=0, vmax=100)
+    face_colors = cmap_load(norm_load(Z))          # RGBA array
+
+    # ── Figure & axes ─────────────────────────────────────────────────────────
+    fig = plt.figure(figsize=(40, 20))
     ax  = fig.add_subplot(111, projection="3d")
 
-    y_positions = np.arange(n) * Y_SPACING
-
-    # ── 3. Draw diagonal grid planes FIRST (behind data) ────────────────────
-    draw_diagonal_load_grid(
-        ax, n, y_positions,
-        LOAD_GRID_LEVELS, SHELF_GAP, LOAD_HEIGHT
-    )
-    ttime_grid_ms = stretched_ttime_ms_levels(global_ttime_max)
-    draw_diagonal_ttime_grid(
-        ax, n, y_positions,
-        ttime_grid_ms, SHELF_GAP, LOAD_HEIGHT, TTIME_HEIGHT,
-        global_ttime_max
+    # ── Draw the continuous surface ───────────────────────────────────────────
+    surf = ax.plot_surface(
+        X, Y, Z,
+        facecolors  = face_colors,
+        edgecolor   = "#FFFFFF",       # dark red mesh lines
+        linewidth   = 0.45,
+        shade       = True,
+        alpha       = 0.90,
+        antialiased = True,
+        zorder      = 5,
     )
 
-    # ── 4. Draw each scenario (on top of grids) ──────────────────────────────
+    # ── Draw ttime stems + markers per scenario ───────────────────────────────
+    log_max = np.log1p(global_ttime_max)
+    # ttime is drawn above Z_MAX_LOAD; scale it to a fixed extra band
+    TTIME_BAND = 40.0    # percent-equivalent units above 100%
+
     for i, (ds, yc) in enumerate(zip(datasets, y_positions)):
-        z_floor = i * SHELF_GAP
+        trel  = ds["ttime_rel"]
+        tms   = ds["ttime_ms"]
+        t_norm = np.log1p(tms) / log_max * TTIME_BAND   # 0 – TTIME_BAND
 
-        xg   = ds["xg"]
-        load = ds["load"]
+        z_tips = Z_MAX_LOAD + t_norm
 
-        # — 4a. Avg load filled ribbon (orange) ——————————————————————————————
-        px = np.concatenate([xg, xg[::-1]])
-        pz = np.concatenate([z_floor + load, np.full(N_INTERP, z_floor)])
-        py = np.full_like(px, yc)
-
-        poly = Poly3DCollection(
-            [list(zip(px, py, pz))],
-            alpha=0.70,
-            facecolor=C_LOAD,
-            edgecolor="none",
-            zorder=i + 10
-        )
-        ax.add_collection3d(poly)
-
-        # top edge outline
-        ax.plot(xg, np.full(N_INTERP, yc), z_floor + load,
-                color=C_LOAD, linewidth=2.0, alpha=1.0, zorder=i + 11)
-
-        # floor baseline
-        ax.plot([0, 1], [yc, yc], [z_floor, z_floor],
-                color=C_FLOOR, linewidth=0.8, linestyle="-", alpha=0.2)
-
-        # — 4b. ttime stems (blue) ————————————————————————————————————————————
-        trel = ds["ttime_rel"]
-        tms  = ds["ttime_ms"]
-
-        log_t   = np.log1p(tms)
-        log_max = np.log1p(global_ttime_max)
-        t_norm  = log_t / log_max * TTIME_HEIGHT
-
-        z_ttime_floor = z_floor + LOAD_HEIGHT
-
-        for j in range(len(trel)):
-            x_j   = trel[j]
-            z_base = z_floor
-            z_top  = z_ttime_floor + t_norm[j]
-            ax.plot([x_j, x_j], [yc, yc],
-                    [z_base, z_top],
-                    color=C_TTIME, linewidth=2.2, alpha=0.90, zorder=i + 12)
+        # for j in range(len(trel)):
+        #     ax.plot([trel[j], trel[j]], [yc, yc],
+        #             [0, z_tips[j]],
+        #             color=C_TTIME, linewidth=1.6, alpha=0.80, zorder=10)
 
         ax.scatter(
-            trel,
-            np.full(len(trel), yc),
-            z_ttime_floor + t_norm,
-            marker="x",
-            s=TTIME_MARKER_SIZE,
-            linewidths=TTIME_MARKER_LW,
-            color=C_TTIME,
-            alpha=0.95,
-            depthshade=False,
-            zorder=i + 13,
+            trel, np.full(len(trel), yc), z_tips,
+            marker="x", s=TTIME_MARKER_SIZE, linewidths=TTIME_MARKER_LW,
+            color=C_TTIME, alpha=0.95, depthshade=False, zorder=11,
         )
 
-        # thin connecting line through ttime tops
+        # Trend line through ttime tips
         order = np.argsort(trel)
-        ax.plot(trel[order], np.full(len(trel), yc),
-                z_ttime_floor + t_norm[order],
-                color=C_TTIME, linewidth=0.9, alpha=0.40, linestyle="-",
-                zorder=i + 12)
+        ax.plot(trel[order], np.full(len(trel), yc), z_tips[order],
+                color=C_TTIME, linewidth=3.2, alpha=0.65, linestyle="-", zorder=10)
 
-        # — 4c. Scenario label ————————————————————————————————————————————————
-        ax.text(-0.06, yc, z_floor + LOAD_HEIGHT / 2,
-                ds["label"],
-            fontsize=FONT_SIZE, ha="right", va="center",
-                color="black", fontweight="bold")
-
-    # ── 5. Axis configuration ────────────────────────────────────────────────
-
-    z_total = (n - 1) * SHELF_GAP + LOAD_HEIGHT + TTIME_HEIGHT + 20
-
+    # ── Axis limits ───────────────────────────────────────────────────────────
+    z_top = Z_MAX_LOAD + TTIME_BAND + 2
     ax.set_xlim(0, 1)
-    ax.set_ylim(-0.5, (n - 1) * Y_SPACING + 0.5)
-    ax.set_zlim(0, z_total)
+    ax.set_ylim(y_positions[0] - 0.5, y_positions[-1] + 0.5)
+    ax.set_zlim(0, z_top)
 
-    ax.set_xticks(np.linspace(0, 1, 6))
-    ax.set_xticklabels([f"{int(v*100)}%" for v in np.linspace(0, 1, 6)], fontsize=FONT_SIZE)
-    ax.set_yticks([])
+    # ── X ticks: relative time ────────────────────────────────────────────────
+    x_tick_vals = np.linspace(0, 1, 11)
+    ax.set_xticks(x_tick_vals)
+    ax.set_xticklabels([f"{int(v*100)}%" for v in x_tick_vals],
+                       fontsize=FONT_SIZE - 4)
 
-    z_load_vals = [0, LOAD_HEIGHT * 0.5, LOAD_HEIGHT]
-    z_load_lbls = ["0%", "50%", "100%"]
+    # ── Y ticks: scenario names exactly at their Y positions ──────────────────
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([ds["label"] for ds in datasets],
+                       fontsize=FONT_SIZE - 2)
 
-    ax.set_zticks(z_load_vals)
-    ax.set_zticklabels(z_load_lbls, fontsize=FONT_SIZE)
+    # ── Z ticks: load % (0–100) aligned with gridlines ───────────────────────
+    # These are in the same units as Z, so gridlines land exactly on tick marks
+    load_tick_pcts  = [0, 25, 50, 75, 100]
+    load_z_ticks    = [float(v) for v in load_tick_pcts]
+    load_z_labels   = [f"{v}%" for v in load_tick_pcts]
 
-    ax.set_xlabel("Relative Time within Test Run", fontsize=FONT_SIZE, labelpad=16)
-    ax.set_ylabel("", fontsize=FONT_SIZE)
-    ax.set_zlabel("Avg Load (% per shelf)", fontsize=FONT_SIZE, labelpad=14)
+    # ttime ticks sit above 100%
+    ttime_ticks_ms  = ttime_tick_values(global_ttime_max)
+    ttime_z_ticks   = [Z_MAX_LOAD + (np.log1p(ms) / log_max) * TTIME_BAND
+                       for ms in ttime_ticks_ms]
+    ttime_z_labels  = [f"{int(ms):,} ms" for ms in ttime_ticks_ms]
 
-    # Mirror avg-load labels
-    y_side = (n - 1) * Y_SPACING + 0.35
-    for z_v, lbl in zip(z_load_vals, z_load_lbls):
-        ax.text(-0.08, y_side, z_v, lbl,
-            fontsize=FONT_SIZE, ha="right", va="center", color=C_LOAD_GRID)
-    ax.text(-0.09, y_side, LOAD_HEIGHT * 0.5,
-            "avg load %",
-            fontsize=FONT_SIZE, ha="right", va="center", color=C_LOAD_GRID)
+    all_z_ticks  = load_z_ticks  + ttime_z_ticks
+    all_z_labels = load_z_labels + ttime_z_labels
 
-    # ttime annotation box
-    fig.text(0.91, 0.80,
-             f"ttime (log scale)\n"
-             f"top spike ≈ {int(global_ttime_max):,} ms\n"
-             f"({int(global_ttime_max/1000):.0f} s)",
-             fontsize=FONT_SIZE, color=C_TTIME, ha="center", va="top",
-             bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
-                       edgecolor=C_TTIME, linewidth=1.5, alpha=0.9))
+    ax.set_zticks(all_z_ticks)
+    ax.set_zticklabels(all_z_labels, fontsize=FONT_SIZE - 5)
 
-    # ── 6. Legend ────────────────────────────────────────────────────────────
-    legend_elements = [
-        Patch(facecolor=C_LOAD,  alpha=0.75, label="Avg Server Load (%)"),
-        Line2D([0], [0], color=C_TTIME, linewidth=2.5,
-               label="ttime stems (ms, log)"),
-        Line2D([0], [0], linestyle="None", marker="x", markersize=10,
-               markeredgewidth=2, color=C_TTIME,
-               label="ttime datapoints"),
-         Line2D([0], [0], color=C_LOAD_GRID, linewidth=1.5,
-             label="Load % reference boundaries"),
-         Line2D([0], [0], color=C_TTIME_GRID, linewidth=1.5,
-             label="ttime reference boundaries"),
-    ]
-    ax.legend(handles=legend_elements,
-              loc="upper left", fontsize=FONT_SIZE, framealpha=0.90,
-              edgecolor="#cccccc")
+    # ── Axis labels ───────────────────────────────────────────────────────────
+    ax.set_xlabel("Relative Time within Test Run",
+                  fontsize=FONT_SIZE, labelpad=38)
+    ax.set_ylabel("Scenario", fontsize=FONT_SIZE, labelpad=38)
+    ax.set_zlabel("Avg Load (%)  /  ttime (ms, log)",
+                  fontsize=FONT_SIZE, labelpad=38)
 
-    # ── 7. View angle ────────────────────────────────────────────────────────
-    ax.view_init(elev=18, azim=-55)
-
-    # ── 8. Pane and grid styling ─────────────────────────────────────────────
+    # ── Wall panes: light fill so gridlines are clearly visible ───────────────
     for pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
-        pane.fill = False
-        pane.set_edgecolor("#aaaaaa")
-    ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.35)
+        pane.fill = True
+        pane.set_facecolor(C_WALL)
+        pane.set_edgecolor("#BFBFBF")
 
-    fig.subplots_adjust(left=0.05, right=0.88, top=0.97, bottom=0.03)
+    # Dense solid gridlines – these now align with load % tick values
+    ax.grid(True, linestyle="-", linewidth=0.7, color=C_GRID, alpha=0.75)
 
-    # ── 9. Save ──────────────────────────────────────────────────────────────
-    fig.savefig(OUTPUT_EPS, format="eps", dpi=300, bbox_inches="tight")
-    fig.savefig(OUTPUT_PNG, format="png", dpi=200, bbox_inches="tight")
+    # ── Colourbar for avg load ────────────────────────────────────────────────
+    # sm = cm.ScalarMappable(cmap=cmap_load, norm=norm_load)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=ax, shrink=0.45, pad=0.04, aspect=18)
+    # cbar.set_label("Avg Load (%)", fontsize=FONT_SIZE - 4)
+    # cbar.ax.tick_params(labelsize=FONT_SIZE - 6)
+
+    # ── Legend ────────────────────────────────────────────────────────────────
+    # legend_elements = [
+    #     Patch(facecolor=cmap_load(0.85), alpha=0.90, label="Avg Server Load (%)"),
+    #     Line2D([0], [0], color=C_TTIME, linewidth=2.0, label="ttime (ms, log-scale)"),
+    #     Line2D([0], [0], linestyle="None", marker="x", markersize=9,
+    #            markeredgewidth=2, color=C_TTIME, label="ttime datapoints"),
+    # ]
+    # ax.legend(handles=legend_elements,
+    #           loc="upper left", fontsize=FONT_SIZE - 4,
+    #           framealpha=0.92, edgecolor="#cccccc")
+
+    # ── View angle ────────────────────────────────────────────────────────────
+    ax.view_init(elev=25, azim=-50)
+
+    # Leave extra room on the right for long 3D z tick labels (ms values).
+    fig.subplots_adjust(left=0.04, right=0.84, top=0.97, bottom=0.04)
+
+    # ── Save ──────────────────────────────────────────────────────────────────
+    fig.savefig(OUTPUT_EPS, format="eps", dpi=300, bbox_inches="tight", pad_inches=0.50)
+    fig.savefig(OUTPUT_PNG, format="png", dpi=200, bbox_inches="tight", pad_inches=0.50)
     print(f"Saved EPS : {OUTPUT_EPS}")
     print(f"Saved PNG : {OUTPUT_PNG}")
     plt.close(fig)
