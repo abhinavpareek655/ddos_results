@@ -285,8 +285,8 @@ def main():
     log_max = np.log1p(global_ttime_max)
 
     for i, (ds, yc) in enumerate(zip(datasets, y_positions)):
-        y_back_s2 = yc - Y_SPACING * 0.10   # server2 wall: 30% behind front face
-        y_back_s3 = yc - Y_SPACING * 0.20   # server3 wall: 55% behind (further)
+        y_back_s2 = yc - Y_SPACING * 0.10   # server2 wall: 10% behind front face
+        y_back_s3 = yc - Y_SPACING * 0.20   # server3 wall: 20% behind (further)
 
         draw_server_up_backdrop(ax, ds["s2_spans"],
                                 yc, y_back_s2, z_backdrop,
