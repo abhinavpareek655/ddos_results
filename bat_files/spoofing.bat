@@ -1,12 +1,14 @@
 @echo off
 
-set time=%1
 
+call stop_server.bat
 call start_server.bat
-call start_monitoring.bat %time%
+timeout /t 5 /nobreak
+call start_monitoring.bat
 call restart_haproxy.bat
-call start_benign.bat %time%
-@REM ssh abhinav@10.48.145.221 "cd ~/Desktop/'spoofing data' && sudo ./ip_addr.sh"
-ssh attacker "cd ~/Desktop/'spoofing data' && echo 'sleep 4; ./attacker.sh' | at %time%" 
+call clear.bat
+timeout /t 5 /nobreak
+start "BENIGN" cmd /k start_benign.bat
+start "ATTACKER" cmd /k spoofed_attacker.bat
 
 pause

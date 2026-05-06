@@ -1,12 +1,15 @@
 @echo off
 
-set time=%1
-set c=%2
+set c=%1
 
+call stop_server.bat
 call start_server.bat
-call start_monitoring.bat %time%
+timeout /t 5 /nobreak
+call start_monitoring.bat
 call restart_haproxy.bat
-call start_benign.bat %time%
-call start_attacker.bat %c% %time%
+call clear.bat
+timeout /t 5 /nobreak
+start "BENIGN" cmd /k start_benign.bat
+start "ATTACKER" cmd /k start_attacker.bat %c%
 
 pause
