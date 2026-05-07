@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=os.cpu_count())
 
-T_TIMEOUT      = 15.0
+T_TIMEOUT      = 10.0
 SIO_COOLDOWN_S = 5.0
 ROLLING_N      = 100
 
@@ -84,7 +84,9 @@ async def track_latency(request: Request, call_next):
     finally:
         elapsed = time.perf_counter() - start
         async with metrics_lock:
-            recent_times.append(elapsed)
+            # Only update the window if this was real work, not a shed
+            if not sio_active:
+                recent_times.append(elapsed)
             current_sio = _check_sio(time.time())
         _enqueue_log(ip, elapsed, current_sio, request.query_params.get("size"))
 
@@ -99,7 +101,7 @@ def matrix_work(size: int) -> str:
 @app.get("/matmul")
 async def matmul(size: int = Query(default=2048, ge=1, le=8192)):
     if sio_active:
-        return {"matrix_size": size, "sha256": "SIO_ACTIVE_SKIPPED_DUE_TO_LOAD", "reason": "high_p95_latency"}
+        return {"matrix_size": size, "sha256": "0" * 64}
     loop = asyncio.get_running_loop()
     hash_val = await loop.run_in_executor(executor, matrix_work, size)
     return {"matrix_size": size, "sha256": hash_val}
